@@ -1,0 +1,35 @@
+Find the Confluence space named exactly "Data and Analytics" (not "Analytics") by searching all spaces and matching on that exact name. Create a stub page titled "Data Catalog: lesteve_sandbox · Bakehouse Analytics" in that space using the Atlassian MCP createConfluencePage tool to get the page ID. Then navigate to that page in the browser using the Claude in Chrome MCP.
+Diagrams — render, convert, and upload all three before writing the page:
+For each diagram below, render it as an SVG using the Visualizer tool, then run a single self-contained JavaScript block in the browser that defines the svgToPng and upload helpers, builds all three SVG strings inline, converts each to PNG at 2× resolution on an HTML5 canvas with a white background, and uploads each as an attachment via POST /wiki/rest/api/content/{pageId}/child/attachment with header X-Atlassian-Token: no-check. Store all results in window._done and poll until all three show status 200. Keep everything in one block so page navigation cannot clear window state between uploads.
+The three diagrams:
+
+Pipeline flowchart — viewBox 680×860, canvas 1360×1720, filename pipeline-flowchart.png. Show source tables (franchises, orders, reviews from samples.bakehouse) → bronze (franchises_bronze, orders_bronze, reviews_bronze) → silver (franchise_orders_silver via "join + enrich", reviews_sentiment_silver via "AI classify") → gold (franchise_perf_gold, customer_rfm_gold, product_sales_gold, flagged_suppliers_gold) → metric views (revenue_metrics, customer_metrics, supplier_metrics) → consumers (AI/BI Dashboards, Genie, Marketing Analytics). Color-code layers: source=gray (#F1EFE8), bronze=coral (#FAECE7/#993C1D), silver=teal (#E1F5EE/#0F6E56), gold=purple (#EEEDFE/#534AB7), metric views=amber (#FAEEDA/#854F0B), consumers=blue (#E6F1FB/#185FA5). Use L-shaped connector paths between layers. Include a color legend.
+RFM segmentation decision tree — viewBox 680×560, canvas 1360×1120, filename rfm-decision-tree.png. Branch on R score (R≥4 left, R=3 center, R≤2 right), then F score, then M score. Leaf nodes: Champion (R≥4, F≥4, M≥4), Loyal (R≥4, F≥4, M 2–3), Potential Loyalist (R≥4, F≤2), Needs Attention (R=3), At Risk (R≤2, M≥3), Lost (R≤2, M≤2). Keep the entire tree within x=20 to x=660 so no nodes are clipped. Show score thresholds on each branch line. Include a segment actions summary box at the bottom.
+Data lineage diagram — viewBox 680×500, canvas 1360×1000, filename data-lineage.png. Five left-to-right color-coded swimlane columns (Source, Bronze, Silver, Gold, Metric Views + Consumers) using the same layer colors as the pipeline. Show each table as a labeled box in its column. Label arrows with transformation type: raw copy, join+enrich, AI classify, aggregate, RFM score, product agg, risk flag. Include a transformation labels legend at the bottom.
+
+Writing the final page — use the browser, not the Atlassian MCP:
+After all three uploads confirm status 200, call GET /wiki/rest/api/content/{pageId}?expand=version to get the current version number, increment by 1, then call PUT /wiki/rest/api/content/{pageId} with Content-Type: application/json and body.representation: "storage". Do NOT use the Atlassian MCP updateConfluencePage tool — it cannot write Confluence storage format. Embed each diagram with <ac:image ac:width="680"><ri:attachment ri:filename="filename.png"/></ac:image> — this is the only format that renders as a visible inline image in Confluence. ADF mediaSingle nodes render as a card widget, not a visible image.
+Page sections in order:
+
+Info panel — <ac:structured-macro ac:name="info"> stating: auto-generated from Unity Catalog metadata via the Databricks + Atlassian MCP integration; schema lesteve_sandbox.bakehouse_analytics is a Databricks medallion pipeline (bronze → silver → gold → metric views) for a global bakehouse franchise network covering franchise performance, customer RFM segmentation, product sales trends, supplier risk, and AI-powered sentiment analysis on customer reviews; today's date.
+Pipeline flowchart — <h2> heading, one-line description, then <ac:image ac:width="680"><ri:attachment ri:filename="pipeline-flowchart.png"/></ac:image>
+RFM segmentation decision tree — <h2> heading, one-line description, then <ac:image ac:width="680"><ri:attachment ri:filename="rfm-decision-tree.png"/></ac:image>
+Data lineage — <h2> heading, one-line description, then <ac:image ac:width="680"><ri:attachment ri:filename="data-lineage.png"/></ac:image>
+Asset reference table — <h2> heading followed by an HTML <table> with columns: UC path, type, layer, description, key columns, governance flags. Cover all 10 assets:
+
+franchises_bronze, orders_bronze, reviews_bronze — Bronze, raw source data, no flags
+franchise_orders_silver — Silver, cleansed joined fact, PII: email_address, customer_name
+reviews_sentiment_silver — Silver, AI-enriched reviews, AI-generated: sentiment_label
+franchise_perf_gold, customer_rfm_gold, product_sales_gold — Gold, aggregated KPIs, no flags
+flagged_suppliers_silver — Silver/Gold, supplier risk, governance-critical: is_flagged
+revenue_metrics — Metric view, franchise revenue KPIs, no flags
+
+
+Business metrics glossary — <h2> heading followed by an HTML <table> with columns: metric, definition, source field, calculation notes. Cover: Revenue (SUM total_amount by franchise and period), Avg order value (AVG total_amount, refunds excluded), RFM scores R/F/M (quintile rank 1–5 on rolling 12-month window, 5=best), Sentiment label (LLM positive/neutral/negative, ~92% accuracy, human review required), Supplier flag (is_flagged=true when late_delivery_rate>20%, governance-critical), Franchise region (EMEA/APAC/AMER/LATAM from franchises_bronze).
+Governance summary — <ac:structured-macro ac:name="warning"> containing:
+
+Classification: Internal — Analytics
+PII fields: email_address and customer_name in franchise_orders_silver — GDPR/CCPA, must not be exposed without masking
+AI-generated fields: sentiment_label in reviews_sentiment_silver — requires human review before use in decisions
+Source system: samples.bakehouse on Databricks Unity Catalog, daily refresh 06:00 UTC
+Downstream consumers: AI/BI Dashboards (executive franchise performance), Genie (natural language data exploration), Marketing Analytics (RFM campaign targeting)
