@@ -1,0 +1,16 @@
+Run the jira-exec-deck skill to build this week's executive update deck.
+
+Context
+- Atlassian site: <your-jira-board>.atlassian.net, project <Your-project>, board 1 (active sprint).
+- Report date = today's date in America/Chicago.
+- File name: Exec_Update_<YYYY-MM-DD>.pptx, saved to the outputs folder.
+
+Rules
+- This runs unattended. Do not ask me questions; make the best call and note anything uncertain at the end.
+- If there is no active sprint, do not build a deck from stale data. Stop and reply "No active sprint — deck not generated."
+- Complete every QA step in the skill (fix all WARNING lines, validate, visually check every slide) before finishing.
+- Read from Jira only. Do not create, edit, or comment on any Jira issues.
+
+Finish with
+- The deck file.
+- A short summary: overall status, green/amber/red counts, decisions needed, and any fallbacks, stale comments, or label mismatches.
